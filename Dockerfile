@@ -12,6 +12,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+RUN npm run build
 
 ENV NODE_ENV=production
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
