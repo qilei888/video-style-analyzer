@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: video-style-analyzer-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MODEL_PROVIDER
+        value: openai-compatible
+      - key: MODEL_API_KEY
+        sync: false
+      - key: MODEL_BASE_URL
+        value: https://yunwu.ai/v1
+      - key: MODEL_NAME
+        value: gpt-4o-mini
+      - key: MODEL_MAX_TOKENS
+        value: "12000"
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: MAX_UPLOAD_MB
+        value: "250"
+      - key: DATA_DIR
+        value: /tmp/video-style-analyzer
+      - key: YTDLP_ENABLED
+        value: "false"
