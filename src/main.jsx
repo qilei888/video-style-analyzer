@@ -409,7 +409,7 @@ function App() {
             <div className="right-results">
               <div className="toolbar">
                 <button className="ghost" onClick={() => copyText("script", stringifyFields(analysis.reusableStoryVersion || analysis.reusableScriptVersion, scriptFields))}>
-                  <Clipboard size={16} /> {copied === "script" ? "已复制" : "复制剧情版本"}
+                  <Clipboard size={16} /> {copied === "script" ? "已复制" : "复制可复用剧情版本"}
                 </button>
               </div>
               <dl className="field-list compact">
@@ -430,8 +430,11 @@ function App() {
           {analysis ? (
             <div className="right-results">
               <div className="toolbar">
+                <button className="ghost" onClick={() => copyText("summary", stringifyFields(analysis.finalSummary, summaryFields))}>
+                  <Clipboard size={16} /> {copied === "summary" ? "已复制" : "复制最终总结"}
+                </button>
                 <button className="ghost" onClick={() => copyText("all", makeExportText())}>
-                  <Clipboard size={16} /> {copied === "all" ? "已复制" : "复制全部"}
+                  <Clipboard size={16} /> {copied === "all" ? "已复制" : "复制两板块"}
                 </button>
                 <button className="ghost" onClick={() => downloadExport("md")}>
                   <Download size={16} /> .md

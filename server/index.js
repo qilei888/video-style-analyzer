@@ -347,20 +347,27 @@ app.get("/api/videos/:videoId/save-page", (req, res, next) => {
       }
       .actions {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 10px;
       }
-      a {
+      a, button {
         min-height: 46px;
         border-radius: 8px;
         display: grid;
         place-items: center;
         text-decoration: none;
         font-weight: 800;
+        font: inherit;
+        border: 0;
+        cursor: pointer;
       }
       .download {
         background: #203923;
         color: #fff;
+      }
+      .share {
+        background: #4fb69e;
+        color: #071512;
       }
       .back {
         background: #fff;
@@ -382,10 +389,28 @@ app.get("/api/videos/:videoId/save-page", (req, res, next) => {
       <h1>${title}</h1>
       <video src="${videoUrl}" controls playsinline></video>
       <div class="actions">
+        <button class="share" id="shareButton" type="button">打开系统保存菜单</button>
         <a class="download" href="${downloadUrl}">下载视频</a>
         <a class="back" href="${escapeHtml(returnUrl)}">返回工具</a>
       </div>
       <p>手机上如果没有直接保存到相册选项，可以先下载到“文件”，再从系统分享菜单保存到相册。</p>
+      <script>
+        const button = document.getElementById("shareButton");
+        const downloadUrl = ${JSON.stringify(downloadUrl)};
+        const fileName = ${JSON.stringify(video.fileName)};
+        button.addEventListener("click", async () => {
+          try {
+            if (!navigator.canShare || !navigator.share) throw new Error("share-not-supported");
+            const response = await fetch(downloadUrl);
+            const blob = await response.blob();
+            const file = new File([blob], fileName, { type: blob.type || "video/mp4" });
+            if (!navigator.canShare({ files: [file] })) throw new Error("file-share-not-supported");
+            await navigator.share({ files: [file], title: ${JSON.stringify(video.originalName || "视频文件")} });
+          } catch {
+            window.location.href = downloadUrl;
+          }
+        });
+      </script>
     </main>
   </body>
 </html>`);

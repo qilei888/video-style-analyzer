@@ -21,8 +21,18 @@ function isHttpUrl(url) {
 }
 
 function extractFirstHttpUrl(text) {
-  const match = String(text || "").match(/https?:\/\/[^\s"'<>，。；、]+/i);
-  return match ? match[0] : "";
+  const match = String(text || "").match(/https?:\/\/[^\s"'<>]+/i);
+  if (!match) return "";
+  return match[0].replace(/[),.;:!?，。；：！？）】》、]+$/u, "");
+}
+
+function isDouyinUrl(url = "") {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "douyin.com" || host.endsWith(".douyin.com");
+  } catch {
+    return false;
+  }
 }
 
 function isVideoContentType(contentType = "") {
@@ -135,7 +145,7 @@ async function fetchPublicUrl(url, extraHeaders = {}) {
 }
 
 async function resolveWithYtDlp(inputUrl) {
-  if (process.env.YTDLP_ENABLED === "false") return null;
+  if (process.env.YTDLP_ENABLED === "false" && !isDouyinUrl(inputUrl)) return null;
 
   const pythonPath = process.env.YTDLP_PYTHON || "python";
   const args = [
@@ -143,6 +153,7 @@ async function resolveWithYtDlp(inputUrl) {
     "yt_dlp",
     "--dump-json",
     "--no-warnings",
+    "--no-check-certificate",
     "--no-playlist",
     "-f",
     "best[vcodec^=h264][ext=mp4]/best[ext=mp4]/best",
@@ -188,6 +199,30 @@ async function readLimitedText(response) {
   return text.slice(0, MAX_HTML_BYTES);
 }
 
+async function resolveYtDlpToResponse(inputUrl, pageUrl = inputUrl, candidatesTried = 0) {
+  const ytDlpResult = await resolveWithYtDlp(inputUrl);
+  if (!ytDlpResult) return null;
+
+  const response = await fetchPublicUrl(ytDlpResult.videoUrl, ytDlpResult.headers);
+  const candidateType = response.headers.get("content-type") || "";
+  if (!response.ok || !response.body || (!isVideoContentType(candidateType) && !hasVideoExtension(response.url))) {
+    return null;
+  }
+
+  return {
+    response,
+    finalUrl: response.url,
+    pageUrl,
+    resolvedFromPage: true,
+    resolver: ytDlpResult.extractor,
+    candidatesTried,
+    title: ytDlpResult.title,
+    width: ytDlpResult.width,
+    height: ytDlpResult.height,
+    duration: ytDlpResult.duration
+  };
+}
+
 async function resolvePublicVideoUrl(inputUrl) {
   const normalizedInputUrl = isHttpUrl(inputUrl) ? inputUrl : extractFirstHttpUrl(inputUrl);
 
@@ -195,6 +230,11 @@ async function resolvePublicVideoUrl(inputUrl) {
     const err = new Error("请输入有效的 http/https 视频链接");
     err.status = 400;
     throw err;
+  }
+
+  if (isDouyinUrl(normalizedInputUrl)) {
+    const resolved = await resolveYtDlpToResponse(normalizedInputUrl, normalizedInputUrl, 1);
+    if (resolved) return resolved;
   }
 
   const pageResponse = await fetchPublicUrl(normalizedInputUrl);
