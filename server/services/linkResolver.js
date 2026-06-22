@@ -243,8 +243,10 @@ async function resolvePublicVideoUrl(inputUrl) {
     throw err;
   }
 
-  if (isDouyinUrl(normalizedInputUrl)) {
-    const resolved = await resolveYtDlpToResponse(normalizedInputUrl, normalizedInputUrl, 1, { throwOnError: true });
+  const isDouyin = isDouyinUrl(normalizedInputUrl);
+
+  if (isDouyin) {
+    const resolved = await resolveYtDlpToResponse(normalizedInputUrl, normalizedInputUrl, 1);
     if (resolved) return resolved;
   }
 
@@ -312,7 +314,11 @@ async function resolvePublicVideoUrl(inputUrl) {
     }
   }
 
-  const err = new Error("未能从该页面解析到可直接读取的视频源，请下载后上传 mp4 / mov 文件");
+  const err = new Error(
+    isDouyin
+      ? "抖音限制了云端直接解析，未能拿到可读取的视频源。请重新复制一次最新分享链接再试；如果仍失败，请先在手机里保存视频，再上传 mp4 / mov 文件。"
+      : "未能从该页面解析到可直接读取的视频源，请下载后上传 mp4 / mov 文件"
+  );
   err.status = 400;
   err.details = { resolvedPageUrl: pageResponse.url, candidatesFound: candidates.length };
   throw err;
