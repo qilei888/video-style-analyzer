@@ -138,10 +138,12 @@ function extractVideoCandidates(html, baseUrl) {
 }
 
 async function fetchPublicUrl(url, extraHeaders = {}) {
+  const douyinCookieHeader = isDouyinUrl(url) ? buildCookieHeader(url) : {};
   return fetch(url, {
     redirect: "follow",
     headers: {
       ...REQUEST_HEADERS,
+      ...douyinCookieHeader,
       ...extraHeaders
     }
   });
@@ -348,6 +350,16 @@ function buildYtDlpCookieArgs(inputUrl) {
   if (cookieFile) return ["--cookies", cookieFile];
 
   return ["--add-header", `Cookie:${normalized.replace(/^cookie:\s*/i, "")}`];
+}
+
+function buildCookieHeader(inputUrl) {
+  const rawCookies = process.env.YTDLP_COOKIES || (isDouyinUrl(inputUrl) ? process.env.DOUYIN_COOKIES : "");
+  if (!rawCookies || fs.existsSync(rawCookies)) return {};
+
+  const normalized = rawCookies.replace(/\\n/g, "\n").trim();
+  if (!normalized || normalized.includes("\n") || normalized.startsWith("# Netscape")) return {};
+
+  return { Cookie: normalized.replace(/^cookie:\s*/i, "") };
 }
 
 function cookieHeaderToNetscapeFile(cookieHeader, inputUrl) {

@@ -239,6 +239,7 @@ app.get("/api/health", (_req, res) => {
     modelConfigured: hasModelConfig(),
     ffmpegReady: Boolean(process.env.FFMPEG_PATH || ffmpegInstaller.path),
     ytDlpEnabled: process.env.YTDLP_ENABLED !== "false",
+    douyinCookiesConfigured: Boolean(process.env.DOUYIN_COOKIES || process.env.YTDLP_COOKIES),
     ytDlpPython: process.env.YTDLP_PYTHON || "python"
   });
 });
