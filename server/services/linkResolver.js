@@ -344,7 +344,55 @@ function buildYtDlpCookieArgs(inputUrl) {
     return ["--cookies", cookiePath];
   }
 
-  return ["--add-header", `Cookie:${normalized}`];
+  const cookieFile = cookieHeaderToNetscapeFile(normalized, inputUrl);
+  if (cookieFile) return ["--cookies", cookieFile];
+
+  return ["--add-header", `Cookie:${normalized.replace(/^cookie:\s*/i, "")}`];
+}
+
+function cookieHeaderToNetscapeFile(cookieHeader, inputUrl) {
+  const cookieText = cookieHeader.replace(/^cookie:\s*/i, "").trim();
+  const pairs = cookieText
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf("=");
+      if (separator <= 0) return null;
+      return {
+        name: part.slice(0, separator).trim(),
+        value: part.slice(separator + 1).trim()
+      };
+    })
+    .filter((pair) => pair && pair.name && pair.value);
+
+  if (!pairs.length) return "";
+
+  const domains = new Set([".douyin.com", "douyin.com"]);
+  try {
+    const host = new URL(inputUrl).hostname.toLowerCase();
+    domains.add(host);
+    if (host.endsWith(".douyin.com")) domains.add(`.${host.split(".").slice(-2).join(".")}`);
+  } catch {
+    // Use the broad Douyin domains above.
+  }
+
+  const expires = 2147483647;
+  const lines = [
+    "# Netscape HTTP Cookie File",
+    "# Generated from DOUYIN_COOKIES. Do not share this file."
+  ];
+
+  for (const domain of domains) {
+    const includeSubdomains = domain.startsWith(".") ? "TRUE" : "FALSE";
+    for (const pair of pairs) {
+      lines.push(`${domain}\t${includeSubdomains}\t/\tTRUE\t${expires}\t${pair.name}\t${pair.value}`);
+    }
+  }
+
+  const cookiePath = path.join(os.tmpdir(), "yt-dlp-cookies.txt");
+  fs.writeFileSync(cookiePath, `${lines.join("\n")}\n`, "utf8");
+  return cookiePath;
 }
 
 module.exports = {
