@@ -1,5 +1,8 @@
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const { execFile } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { promisify } = require("util");
 
 const execFileAsync = promisify(execFile);
@@ -148,6 +151,7 @@ async function resolveWithYtDlp(inputUrl, options = {}) {
   if (process.env.YTDLP_ENABLED === "false" && !isDouyinUrl(inputUrl)) return null;
 
   const pythonPath = process.env.YTDLP_PYTHON || "python";
+  const cookieArgs = buildYtDlpCookieArgs(inputUrl);
   const args = [
     "-m",
     "yt_dlp",
@@ -157,6 +161,7 @@ async function resolveWithYtDlp(inputUrl, options = {}) {
     "--no-playlist",
     "-f",
     "best[vcodec^=h264][ext=mp4]/best[ext=mp4]/best",
+    ...cookieArgs,
     inputUrl
   ];
 
@@ -322,6 +327,24 @@ async function resolvePublicVideoUrl(inputUrl) {
   err.status = 400;
   err.details = { resolvedPageUrl: pageResponse.url, candidatesFound: candidates.length };
   throw err;
+}
+
+function buildYtDlpCookieArgs(inputUrl) {
+  const rawCookies = process.env.YTDLP_COOKIES || (isDouyinUrl(inputUrl) ? process.env.DOUYIN_COOKIES : "");
+  if (!rawCookies) return [];
+
+  if (fs.existsSync(rawCookies)) return ["--cookies", rawCookies];
+
+  const normalized = rawCookies.replace(/\\n/g, "\n").trim();
+  if (!normalized) return [];
+
+  if (normalized.includes("\n") || normalized.startsWith("# Netscape")) {
+    const cookiePath = path.join(os.tmpdir(), "yt-dlp-cookies.txt");
+    fs.writeFileSync(cookiePath, normalized, "utf8");
+    return ["--cookies", cookiePath];
+  }
+
+  return ["--add-header", `Cookie:${normalized}`];
 }
 
 module.exports = {
