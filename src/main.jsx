@@ -48,14 +48,14 @@ const scriptFields = [
   ["shotLanguageGuide", "镜头语言拆解"],
   ["emotionalRhythmCurve", "情绪节奏曲线"],
   ["dialogueVoiceoverSubtitleNotes", "对白 / 旁白 / 字幕 / 文字"],
-  ["aiVideoRecreationNotes", "AI 视频反推关键信息"],
-  ["standardShortDramaScript", "标准短剧剧本"]
+  ["reverseEngineeringNotes", "反推还原注意事项"],
+  ["sourceOrderedScript", "原视频顺序剧本"]
 ];
 
 const summaryFields = [
   ["coreAttraction", "真正吸引人的核心"],
   ["mostImportantLearning", "最应该学习什么"],
-  ["newStoryAdaptationDirection", "原视频必须忠实保留的元素"],
+  ["faithfulRetentionPoints", "原视频必须忠实保留的元素"],
   ["aiGenerationFailureRisks", "AI 生成最容易翻车的地方"]
 ];
 
@@ -241,7 +241,7 @@ function App() {
 
   function makeExportText() {
     if (!analysis) return "";
-    const storyVersion = analysis.reusableStoryVersion || analysis.reusableScriptVersion || {};
+    const storyVersion = analysis.reverseResult || analysis.reusableStoryVersion || analysis.reusableScriptVersion || {};
     const lines = [
       "# 反推结果与最终总结",
       "",
@@ -408,17 +408,17 @@ function App() {
           {analysis ? (
             <div className="right-results">
               <div className="toolbar">
-                <button className="ghost" onClick={() => copyText("script", stringifyFields(analysis.reusableStoryVersion || analysis.reusableScriptVersion, scriptFields))}>
+                <button className="ghost" onClick={() => copyText("script", stringifyFields(analysis.reverseResult || analysis.reusableStoryVersion || analysis.reusableScriptVersion, scriptFields))}>
                   <Clipboard size={16} /> {copied === "script" ? "已复制" : "复制反推结果"}
                 </button>
               </div>
               <dl className="field-list compact">
-                {scriptFields.map(([key, label]) => (
-                  <React.Fragment key={key}>
-                    <dt>{label}</dt>
-                    <dd>{formatValue((analysis.reusableStoryVersion || analysis.reusableScriptVersion)?.[key]) || "..."}</dd>
-                  </React.Fragment>
-                ))}
+                  {scriptFields.map(([key, label]) => (
+                    <React.Fragment key={key}>
+                      <dt>{label}</dt>
+                    <dd>{formatValue((analysis.reverseResult || analysis.reusableStoryVersion || analysis.reusableScriptVersion)?.[key]) || "..."}</dd>
+                    </React.Fragment>
+                  ))}
               </dl>
             </div>
           ) : (
