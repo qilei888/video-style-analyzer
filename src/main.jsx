@@ -48,14 +48,14 @@ const scriptFields = [
   ["shotLanguageGuide", "镜头语言拆解"],
   ["emotionalRhythmCurve", "情绪节奏曲线"],
   ["dialogueVoiceoverSubtitleNotes", "对白 / 旁白 / 字幕 / 文字"],
-  ["aiVideoRecreationNotes", "AI 视频复刻关键信息"],
+  ["aiVideoRecreationNotes", "AI 视频反推关键信息"],
   ["standardShortDramaScript", "标准短剧剧本"]
 ];
 
 const summaryFields = [
   ["coreAttraction", "真正吸引人的核心"],
   ["mostImportantLearning", "最应该学习什么"],
-  ["newStoryAdaptationDirection", "新故事改编方向"],
+  ["newStoryAdaptationDirection", "原视频必须忠实保留的元素"],
   ["aiGenerationFailureRisks", "AI 生成最容易翻车的地方"]
 ];
 
@@ -209,7 +209,7 @@ function App() {
       });
       setAnalysis(data);
       setActiveFrame(selectedFrames[0]);
-      setNotice("分析完成，已生成可复用剧情版本和最终总结");
+      setNotice("分析完成，已生成反推结果和最终总结");
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -243,9 +243,9 @@ function App() {
     if (!analysis) return "";
     const storyVersion = analysis.reusableStoryVersion || analysis.reusableScriptVersion || {};
     const lines = [
-      "# 可复用剧情版本与最终总结",
+      "# 反推结果与最终总结",
       "",
-      "## 可复用剧情版本"
+      "## 反推结果"
     ];
 
     for (const [key, label] of scriptFields) lines.push(`- ${label}: ${formatValue(storyVersion?.[key])}`);
@@ -286,7 +286,7 @@ function App() {
       </header>
 
       <section className="policy">
-        本工具用于学习视频画面语言和生成相似风格的原创变体提示词，不用于复制、盗用或伪造他人作品。检测到水印、logo、明星脸、影视角色、品牌标识、字幕等元素时，应在最终提示词中泛化改写并排除原始身份。
+        本工具用于学习视频画面语言和反推原视频的画面、镜头、人物状态、光影和节奏，不用于复制、盗用或伪造他人作品。检测到水印、logo、明星脸、影视角色、品牌标识、字幕等元素时，只做画面事实记录，不输出仿冒身份或商用复刻指令。
       </section>
 
       {notice && <div className="notice">{notice}</div>}
@@ -395,7 +395,7 @@ function App() {
 
           <button className="primary wide" onClick={analyzeFrames} disabled={busy === "analyze" || selectedFrames.length === 0}>
             {busy === "analyze" ? <Loader2 className="spin" size={18} /> : <RefreshCcw size={18} />}
-            生成剧情版本和最终总结
+            生成反推结果和最终总结
           </button>
           {(video || frames.length > 0 || analysis) && (
             <button className="ghost wide" onClick={resetWorkspace}>
@@ -404,12 +404,12 @@ function App() {
           )}
         </Panel>
 
-        <Panel title="可复用剧情版本" icon={<ImageIcon size={18} />}>
+        <Panel title="反推结果" icon={<ImageIcon size={18} />}>
           {analysis ? (
             <div className="right-results">
               <div className="toolbar">
                 <button className="ghost" onClick={() => copyText("script", stringifyFields(analysis.reusableStoryVersion || analysis.reusableScriptVersion, scriptFields))}>
-                  <Clipboard size={16} /> {copied === "script" ? "已复制" : "复制可复用剧情版本"}
+                  <Clipboard size={16} /> {copied === "script" ? "已复制" : "复制反推结果"}
                 </button>
               </div>
               <dl className="field-list compact">
@@ -422,7 +422,7 @@ function App() {
               </dl>
             </div>
           ) : (
-            <EmptyState text="完成分析后，这里会生成一版高信息密度的可复用剧情版本，包含故事、人物、场景、美术、镜头、情绪节奏和标准短剧剧本。" />
+            <EmptyState text="完成分析后，这里会生成一版高信息密度的反推结果，忠实整理原视频的故事、人物、场景、美术、镜头、情绪节奏和剧本结构。" />
           )}
         </Panel>
 
