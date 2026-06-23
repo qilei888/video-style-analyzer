@@ -241,6 +241,133 @@ async function resolveYtDlpToResponse(inputUrl, pageUrl = inputUrl, candidatesTr
   };
 }
 
+function getLocalBrowserExecutable() {
+  const configured = process.env.BROWSER_EXECUTABLE_PATH;
+  if (configured && fs.existsSync(configured)) return configured;
+
+  const candidates = [
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || "";
+}
+
+function isLikelyBrowserVideoUrl(url = "") {
+  const value = String(url).toLowerCase();
+  return (
+    value.includes(".mp4") ||
+    value.includes("/aweme/v1/play/") ||
+    value.includes("video_id=") ||
+    value.includes("mime_type=video") ||
+    value.includes("mime_type%3dvideo")
+  );
+}
+
+async function collectDouyinCandidatesWithBrowser(pageUrl) {
+  if (!isDouyinUrl(pageUrl) || process.env.DOUYIN_BROWSER_RESOLVER === "false") return [];
+
+  let chromium;
+  try {
+    ({ chromium } = require("playwright-core"));
+  } catch {
+    return [];
+  }
+
+  const executablePath = getLocalBrowserExecutable();
+  if (!executablePath && process.env.NODE_ENV === "production") return [];
+
+  const browser = await chromium.launch({
+    executablePath: executablePath || undefined,
+    headless: true,
+    args: ["--disable-blink-features=AutomationControlled", "--autoplay-policy=no-user-gesture-required"]
+  });
+
+  try {
+    const candidates = new Map();
+    const cookieHeader = buildCookieHeader(pageUrl).Cookie;
+    const context = await browser.newContext({
+      locale: "zh-CN",
+      viewport: { width: 1440, height: 900 },
+      userAgent: REQUEST_HEADERS["User-Agent"],
+      extraHTTPHeaders: {
+        "Accept-Language": REQUEST_HEADERS["Accept-Language"],
+        ...(cookieHeader ? { Cookie: cookieHeader } : {})
+      }
+    });
+    const page = await context.newPage();
+
+    const remember = (url, headers = {}) => {
+      if (!url || !isHttpUrl(url)) return;
+      if (!isLikelyBrowserVideoUrl(url)) return;
+      candidates.set(url, {
+        url,
+        headers: {
+          Referer: pageUrl,
+          "User-Agent": REQUEST_HEADERS["User-Agent"],
+          ...headers
+        }
+      });
+    };
+
+    page.on("request", (request) => remember(request.url(), request.headers()));
+    page.on("response", async (response) => {
+      const headers = response.headers();
+      const contentType = headers["content-type"] || "";
+      if (isVideoContentType(contentType) || isLikelyBrowserVideoUrl(response.url())) {
+        remember(response.url(), { Referer: pageUrl });
+      }
+    });
+
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+    await page.waitForTimeout(9000);
+
+    const pageCandidates = await page.evaluate(() => {
+      const urls = [];
+      for (const video of Array.from(document.querySelectorAll("video"))) {
+        if (video.currentSrc) urls.push(video.currentSrc);
+        if (video.src) urls.push(video.src);
+      }
+      for (const item of performance.getEntriesByType("resource")) {
+        if (item && item.name) urls.push(item.name);
+      }
+      return urls;
+    });
+
+    for (const url of pageCandidates) remember(url, { Referer: pageUrl });
+    await context.close();
+
+    return Array.from(candidates.values());
+  } finally {
+    await browser.close();
+  }
+}
+
+async function resolveDouyinWithBrowser(pageUrl, candidatesTried = 0) {
+  const candidates = await collectDouyinCandidatesWithBrowser(pageUrl);
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchPublicUrl(candidate.url, candidate.headers);
+      const candidateType = response.headers.get("content-type") || "";
+      if (response.ok && response.body && (isVideoContentType(candidateType) || hasVideoExtension(response.url))) {
+        return {
+          response,
+          finalUrl: response.url,
+          pageUrl,
+          resolvedFromPage: true,
+          resolver: "browser-network",
+          candidatesTried: candidatesTried + candidates.indexOf(candidate) + 1
+        };
+      }
+    } catch {
+      // Continue with the next browser-observed candidate.
+    }
+  }
+  return null;
+}
+
 async function resolvePublicVideoUrl(inputUrl) {
   const normalizedInputUrl = isHttpUrl(inputUrl) ? inputUrl : extractFirstHttpUrl(inputUrl);
 
@@ -319,6 +446,11 @@ async function resolvePublicVideoUrl(inputUrl) {
         duration: ytDlpResult.duration
       };
     }
+  }
+
+  if (isDouyin) {
+    const browserResolved = await resolveDouyinWithBrowser(pageResponse.url, candidates.length);
+    if (browserResolved) return browserResolved;
   }
 
   const err = new Error(
