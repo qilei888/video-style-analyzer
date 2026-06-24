@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const cors = require("cors");
 const multer = require("multer");
 const express = require("express");
@@ -43,6 +44,31 @@ function isAllowedOrigin(origin) {
   } catch {
     return false;
   }
+}
+
+function getLanUrls(req) {
+  const frontendPort = process.env.FRONTEND_PORT || "5183";
+  const urls = [];
+  const interfaces = os.networkInterfaces();
+
+  for (const addresses of Object.values(interfaces)) {
+    for (const address of addresses || []) {
+      if (address.family !== "IPv4" || address.internal) continue;
+      if (
+        address.address.startsWith("192.168.") ||
+        address.address.startsWith("10.") ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(address.address)
+      ) {
+        urls.push(`http://${address.address}:${frontendPort}/`);
+      }
+    }
+  }
+
+  if (!urls.length && req?.hostname) {
+    urls.push(`${req.protocol}://${req.hostname}:${frontendPort}/`);
+  }
+
+  return Array.from(new Set(urls));
 }
 
 app.use(
@@ -248,7 +274,8 @@ app.get("/api/config", (_req, res) => {
   res.json({
     modelConfigured: hasModelConfig(),
     provider: process.env.MODEL_PROVIDER || "openai-compatible",
-    modelName: process.env.MODEL_NAME || ""
+    modelName: process.env.MODEL_NAME || "",
+    lanUrls: getLanUrls(_req)
   });
 });
 

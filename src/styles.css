@@ -100,6 +100,37 @@ h1 {
   color: #6d4b00;
 }
 
+.phone-url-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+  background: #eaf7f3;
+  border: 1px solid #bde2d7;
+  color: #183c34;
+}
+
+.phone-url-card div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.phone-url-card span {
+  color: #45635b;
+  font-size: 13px;
+}
+
+.phone-url-card a {
+  color: #0b5b4b;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(280px, 0.95fr) minmax(300px, 1fr) minmax(340px, 1.15fr);
@@ -503,5 +534,10 @@ h1 {
 
   .download-link {
     width: 100%;
+  }
+
+  .phone-url-card {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

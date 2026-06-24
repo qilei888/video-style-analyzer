@@ -80,6 +80,7 @@ function App() {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState(savedWorkspace.video ? "已恢复上次工作进度" : "");
   const [copied, setCopied] = useState("");
+  const phoneUrl = config.lanUrls?.[0] || "";
 
   useEffect(() => {
     fetch(apiUrl("/api/config"))
@@ -288,6 +289,19 @@ function App() {
       <section className="policy">
         本工具用于学习视频画面语言和反推原视频的画面、镜头、人物状态、光影和节奏，不用于复制、盗用或伪造他人作品。检测到水印、logo、明星脸、影视角色、品牌标识、字幕等元素时，只做画面事实记录，不输出仿冒身份或商用复刻指令。
       </section>
+
+      {phoneUrl && (
+        <section className="phone-url-card">
+          <div>
+            <strong>手机访问地址</strong>
+            <span>手机和电脑连同一个 Wi-Fi 后，在手机 Safari 打开这个地址。</span>
+            <a href={phoneUrl}>{phoneUrl}</a>
+          </div>
+          <button className="ghost" onClick={() => copyText("phone-url", phoneUrl)}>
+            <Clipboard size={16} /> {copied === "phone-url" ? "已复制" : "复制地址"}
+          </button>
+        </section>
+      )}
 
       {notice && <div className="notice">{notice}</div>}
 
